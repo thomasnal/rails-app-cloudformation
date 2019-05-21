@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: "Ruby on Rails application on a single EC2 with PostgreSQL Amazon RDS"
+Description: "Ruby on Rails application in an auto-scaling group"
 
 
 Parameters:
