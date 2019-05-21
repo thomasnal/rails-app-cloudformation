@@ -1,0 +1,65 @@
+---
+- name: Provision app
+  hosts: localhost
+  connection: local
+  gather_facts: no
+
+  vars_files:
+    - variables.yml
+
+  vars_prompt:
+    - default: simple-rails
+      name: stack_name
+      private: no
+      prompt: "Type stack name"
+    - default: master
+      name: git_tag
+      private: no
+      prompt: "Type git tag to deploy"
+
+
+  tasks:
+    - name: Provision CloudFormation S3 bucket
+      cloudformation:
+        stack_name: "{{ stack_name }}-cf"
+        state: present
+        region: "{{ aws_region }}"
+        template: ../cloudformation/s3-cf.yml
+        template_parameters:
+          # XXX: use aws generated s3 bucket name
+          OrgPrefix: "{{ org_prefix }}"
+        tags:
+          Stack: "{{ stack_name }}"
+      register: cf_templates
+
+    - set_fact:
+        cf_templates_bucket_name: "{{ cf_templates.stack_outputs.BucketName }}"
+    - set_fact:
+        cf_templates_s3_url: "{{ cf_templates.stack_outputs.BucketUrl }}"
+    - debug:
+        msg:
+          - "BucketName: {{ cf_templates_bucket_name }}"
+          - "BucketUrl: {{ cf_templates_s3_url }}"
+
+    - name: Upload CloudFormation templates
+      s3_sync:
+        bucket: "{{ cf_templates_bucket_name }}"
+        file_root: ../cloudformation
+
+    - name: Provision the main stack
+      cloudformation:
+        stack_name: "{{ stack_name }}"
+        state: present
+        region: "{{ aws_region }}"
+        disable_rollback: true
+        template: ../cloudformation/main.yml
+        template_parameters:
+          CfTemplatesUrl: "{{ cf_templates_s3_url }}"
+          DbName: "{{ db_name }}"
+          DbUsername: "{{ db_username }}"
+          DbPassword: "{{ db_password }}"
+          KeyName: "{{ key_name }}"
+          RailsSecretKeyBase: "{{ rails_secret_key_base }}"
+          SourceTag: "{{ git_tag }}"
+        tags:
+          Stack: "{{ stack_name }}"

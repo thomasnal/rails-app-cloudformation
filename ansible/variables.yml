@@ -1,0 +1,8 @@
+aws_region: eu-west-2
+db_name: simplerails_production
+db_password: simple-rails!
+db_username: simplerails
+instance_type: t3.small
+key_name: first
+org_prefix: thomasnal
+rails_secret_key_base: 420989ca2ea5481494b547d89bdd4d6a906ed731efc56367aa6ec42c9b2e95954aab89e0335bd74129e44ffdb1ffcd492c9dabca66d5f826843990ae0b6941ce

@@ -1,0 +1,60 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: "PostgreSQL Amazon RDS"
+
+
+Parameters:
+  DbAllocatedStorage:
+    Default: 5
+    Description: The size of the database in Gb
+    Type: Number
+    MinValue: 5
+    MaxValue: 5
+
+  DbInstanceClass:
+    AllowedValues:
+      - db.t3.micro
+    Default: db.t3.micro
+    Description: The database instance type
+    Type: String
+
+  DbName:
+    Default: simplerailsproduction
+    MinLength: 3
+    Type: String
+
+  DbPassword:
+    NoEcho: true
+    MinLength: 8
+    Type: String
+
+  DbSecurityGroupId:
+    Type: String
+
+  DbSubnetGroupName:
+    Type: String
+
+  DbUsername:
+    Default: simplerails
+    MinLength: 3
+    Type: String
+
+
+Resources:
+  Postgres:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      Engine: postgres
+      DBName: !Ref DbName
+      MasterUsername: !Ref DbUsername
+      MasterUserPassword: !Ref DbPassword
+      DBInstanceClass: !Ref DbInstanceClass
+      AllocatedStorage: !Ref DbAllocatedStorage
+      DBSubnetGroupName: !Ref DbSubnetGroupName
+      VPCSecurityGroups:
+        - !Ref DbSecurityGroupId
+
+
+Outputs:
+  DbAddress:
+    Description: Database address
+    Value: !GetAtt Postgres.Endpoint.Address

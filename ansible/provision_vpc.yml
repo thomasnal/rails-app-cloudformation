@@ -1,0 +1,23 @@
+---
+- name: Provision vpc stack
+  hosts: localhost
+  connection: local
+  gather_facts: no
+
+  vars_prompt:
+    - default: simple-rails-vpc
+      name: stack_name
+      private: no
+      prompt: "Type stack name"
+
+
+  tasks:
+    - name: Provision the vpc stack
+      cloudformation:
+        stack_name: "{{ stack_name }}"
+        state: present
+        region: "{{ aws_region }}"
+        disable_rollback: true
+        template: ../cloudformation/vpc.yml
+        tags:
+          Stack: "{{ stack_name }}"

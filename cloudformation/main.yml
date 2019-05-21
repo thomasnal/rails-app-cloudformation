@@ -1,0 +1,129 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: "Ruby on Rails application on a single EC2 with PostgreSQL Amazon RDS"
+
+
+Parameters:
+  CfTemplatesUrl:
+    Description: Url of S3 bucket with CloudFormation templates
+    Type: String
+
+  # Application Stack (app)
+  GithubUrl:
+    Default: https://github.com/thomasnal/revolut-app
+    Description: Github project url
+    Type: String
+
+  InstanceType:
+    AllowedValues:
+    - t3.micro
+    ConstraintDescription: must be a valid EC2 instance type
+    Default: t3.micro
+    Description: "WebServer EC2 instance type"
+    Type: String
+
+  KeyName:
+    ConstraintDescription: must be the name of an existing EC2 KeyPair.
+    Description: Name of an existing EC2 KeyPair to enable SSH access to the instances
+    Type: AWS::EC2::KeyPair::KeyName
+
+  SourceTag:
+    Description: Application tag to deploy, e.g. v1.0, master
+    Type: String
+
+  SSHLocation:
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    ConstraintDescription: must be a valid IP CIDR range of the form x.x.x.x/x.
+    Default: 0.0.0.0/0
+    Description: The IP address range that can be used to SSH to the EC2 instances
+    MaxLength: '18'
+    MinLength: '9'
+    Type: String  
+
+  # Database Stack Parameters (rds)
+  DbAllocatedStorage:
+    Default: 5
+    Description: The size of the database in Gb
+    Type: Number
+    MinValue: 5
+    MaxValue: 5
+
+  DbInstanceClass:
+    AllowedValues:
+      - db.t3.micro
+    Default: db.t3.micro
+    Description: The database instance type
+    Type: String
+
+  DbName:
+    ConstraintDescription: must begin with a letter or underscore, subsequent characters can be letters, underscores, or digits (0-9)
+    Default: simplerails_production
+    MinLength: 3
+    MaxLength: 63
+    Type: String
+
+  DbPassword:
+    NoEcho: true
+    MinLength: 8
+    MaxLength: 128
+    Type: String
+
+  DbUsername:
+    Default: simplerails
+    MinLength: 3
+    Type: String
+ 
+  RailsSecretKeyBase:
+    Type: String
+
+  WebServerCapacity:
+    Default: 2
+    Type: Number
+
+
+Resources:
+  Vpc:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      Parameters:
+        SSHLocation: !Ref SSHLocation
+      TemplateURL: !Sub "${CfTemplatesUrl}/vpc.yml"
+
+  Database:
+    Type: AWS::CloudFormation::Stack
+    DependsOn: Vpc
+    Properties:
+      Parameters:
+        DbAllocatedStorage: !Ref DbAllocatedStorage
+        DbInstanceClass: !Ref DbInstanceClass
+        DbName: !Ref DbName
+        DbPassword: !Ref DbPassword
+        DbSecurityGroupId: !GetAtt Vpc.Outputs.DbSecurityGroupId
+        DbSubnetGroupName: !GetAtt Vpc.Outputs.DbSubnetGroupName
+        DbUsername: !Ref DbUsername
+      TemplateURL: !Sub "${CfTemplatesUrl}/rds.yml"
+
+  App:
+    Type: AWS::CloudFormation::Stack
+    DependsOn: Database
+    Properties:
+      Parameters:
+        ALBTargetGroupArn: !GetAtt Vpc.Outputs.WebServerALBTargetGroupArn
+        DbAddress: !GetAtt Database.Outputs.DbAddress
+        DbName: !Ref DbName
+        DbUsername: !Ref DbUsername
+        DbPassword: !Ref DbPassword
+        GithubUrl: !Ref GithubUrl
+        InstanceType: !Ref InstanceType
+        KeyName: !Ref KeyName
+        RailsSecretKeyBase: !Ref RailsSecretKeyBase
+        SourceTag: !Ref SourceTag
+        WebServerSecurityGroupId: !GetAtt Vpc.Outputs.WebServerSecurityGroupId
+        WebServerSubnetOneId: !GetAtt Vpc.Outputs.WebServerSubnetOneId
+        WebServerSubnetTwoId: !GetAtt Vpc.Outputs.WebServerSubnetTwoId
+      TemplateURL: !Sub "${CfTemplatesUrl}/app.yml"
+
+
+Outputs:
+  WebsiteURL:
+    Description: Application URL
+    Value: !GetAtt Vpc.Outputs.WebsiteURL

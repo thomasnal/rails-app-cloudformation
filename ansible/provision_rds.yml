@@ -1,0 +1,32 @@
+---
+- name: Provision app
+  hosts: localhost
+  connection: local
+  gather_facts: no
+
+  vars_files:
+    - variables_rds.yml
+
+  vars_prompt:
+    - default: simple-rails-rds
+      name: stack_name
+      private: no
+      prompt: "Type stack name"
+
+
+  tasks:
+    - name: Provision the rds stack
+      cloudformation:
+        stack_name: "{{ stack_name }}"
+        state: present
+        region: "{{ aws_region }}"
+        disable_rollback: true
+        template: ../cloudformation/rds.yml
+        template_parameters:
+          DbName: "{{ db_name }}"
+          DbUsername: "{{ db_username }}"
+          DbPassword: "{{ db_password }}"
+          DbSecurityGroupId: "{{ db_security_group_id }}"
+          DbSubnetGroupName: "{{ db_subnet_group_name }}"
+        tags:
+          Stack: "{{ stack_name }}"

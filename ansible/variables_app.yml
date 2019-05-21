@@ -1,0 +1,13 @@
+alb_target_group_arn: arn:aws:elasticloadbalancing:eu-west-2:989366307078:targetgroup/simpl-ALBTa-1MUAGEP8DTKPD/9f76e197c14b9c78
+aws_region: eu-west-2
+db_address: spvd6ytltqlvzv.c6bewugq3xpk.eu-west-2.rds.amazonaws.com
+db_name: simplerails_production
+db_password: simple-rails!
+db_username: simplerails
+instance_type: t3.small
+key_name: first
+rails_secret_key_base: 420989ca2ea5481494b547d89bdd4d6a906ed731efc56367aa6ec42c9b2e95954aab89e0335bd74129e44ffdb1ffcd492c9dabca66d5f826843990ae0b6941ce
+source_tag: master
+web_server_security_group_id: sg-08ffb9c95932f9381
+web_server_subnet_one_id: subnet-05890fd5d904d8f91
+web_server_subnet_two_id: subnet-0516d40a94f9d97d2

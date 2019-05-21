@@ -1,0 +1,25 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: "S3 bucket to store CloudFormation templates"
+
+
+Parameters:
+  OrgPrefix:
+    Description: Organization prefix for the S3 bucket name
+    Type: String
+
+
+Resources:
+  CfBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "${OrgPrefix}-${AWS::StackName}"
+
+
+Outputs:
+  BucketName:
+    Description: Name of the S3 bucket for CloudFormation templates
+    Value: !Ref CfBucket
+
+  BucketUrl:
+    Description: URL of the bucket
+    Value: !Sub "http://${CfBucket.DomainName}"

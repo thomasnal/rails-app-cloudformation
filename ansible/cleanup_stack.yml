@@ -1,0 +1,21 @@
+---
+- name: Delete CloudFormation stack
+  hosts: localhost
+  connection: local
+  gather_facts: no
+
+  vars_files:
+    - variables.yml
+
+  vars_prompt:
+    - name: stack_name
+      private: no
+      prompt: "Type stack name"
+
+
+  tasks:
+    - name: Delete the stack
+      cloudformation:
+        stack_name: "{{ stack_name }}"
+        state: absent
+        region: "{{ aws_region }}"

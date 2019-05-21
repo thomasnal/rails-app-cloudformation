@@ -1,0 +1,218 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: "EC2 instance running a Ruby on Rails application in nginx server"
+
+
+Parameters:
+  ALBTargetGroupArn:
+    Type: String
+
+  GithubUrl:
+    Default: https://github.com/thomasnal/revolut-app
+    Description: Github project url
+    Type: String
+
+  InstanceType:
+    AllowedValues:
+      - t3.micro
+      - t3.small
+    ConstraintDescription: must be a valid EC2 instance type
+    Default: t3.small
+    Description: "WebServer EC2 instance type"
+    Type: String
+
+  KeyName:
+    ConstraintDescription: must be the name of an existing EC2 KeyPair.
+    Description: Name of an existing EC2 KeyPair to enable SSH access to the instances
+    Type: AWS::EC2::KeyPair::KeyName
+
+  RailsSecretKeyBase:
+    Type: String
+
+  SourceTag:
+    Description: Application tag to deploy, e.g. v1.0, master
+    Type: String
+
+  WebServerCapacity:
+    Default: 2
+    Type: Number
+
+  WebServerSecurityGroupId:
+    Type: String
+
+  WebServerSubnetOneId:
+    Type: String
+
+  WebServerSubnetTwoId:
+    Type: String
+
+  # Database connetion
+  DbAddress:
+    Type: String
+
+  DbName:
+    Type: String
+
+  DbPassword:
+    Type: String
+
+  DbUsername:
+    Type: String
+
+
+Mappings:
+  AWSInstanceType2Arch:
+    t3.micro:
+      Arch: HVM64
+    t3.small:
+      Arch: HVM64
+  AWSRegionArch2AMI:
+    eu-west-2:
+      # XXX: AWS fails to use the Amazon Linux 2 to start an instance
+      # HVM64: ami-02b2beaac9472814c
+      HVM64: ami-03ca259ae4cb86837
+
+
+Resources:
+  LaunchConfig:
+    Type: AWS::AutoScaling::LaunchConfiguration
+    Metadata:
+      AWS::CloudFormation::Init:
+        configSets:
+          config_all:
+            - configure_cfn
+            - install_rails
+            - install_app
+
+        configure_cfn:
+          files:
+            /etc/cfn/cfn-hup.conf:
+              content: !Sub |
+                [main]
+                stack=${AWS::StackId}
+                region=${AWS::Region}
+                interval=1
+              group: root
+              mode: "000400"
+              owner: root
+            /etc/cfn/hooks.d/cfn-auto-reloader.conf:
+              content: !Sub |
+                [cfn-auto-reloader-hook]
+                triggers=post.update
+                path=Resources.LaunchConfig.Metadata.AWS::CloudFormation::Init
+                action=/opt/aws/bin/cfn-init -s ${AWS::StackId} -r LaunchConfig --configsets config_all --region ${AWS::Region}
+                runas=root
+              group: root
+              mode: "000400"
+              owner: root
+          services:
+            sysvinit:
+              cfn-hup:
+                enabled: true
+                ensureRunning: true
+                files:
+                  - /etc/cfn/cfn-hup.conf
+                  - /etc/cfn/hooks.d/cfn-auto-reloader.conf
+
+        install_app:
+          files:
+            /tmp/start_app:
+              content: !Sub |
+                #!/bin/bash -l
+                cd /var/www/html
+                export $(cat .env | xargs)
+                echo "* Installing bundle..."
+                bundle install
+                echo "* Setting up database..."
+                rails db:setup
+                echo "* Start rails server..."
+                rails server --binding 0.0.0.0 -p 80 -d
+              group: root
+              mode: "000500"
+              owner: root
+            /var/www/html/.env:
+              content: !Sub |
+                POSTGRESQL_ADDRESS=${DbAddress}
+                POSTGRESQL_DATABASE=${DbName}
+                POSTGRESQL_USERNAME=${DbUsername}
+                POSTGRESQL_PASSWORD=${DbPassword}
+                RAILS_ENV=production
+                SECRET_KEY_BASE=${RailsSecretKeyBase}
+              group: root
+              mode: "000400"
+              owner: root
+          commands:
+            01_start_app:
+              command: "/tmp/start_app > /var/log/start_app.log"
+          packages:
+            yum:
+              postgresql92: []
+              postgresql92-devel: []
+          sources:
+            /var/www/html: !Sub "${GithubUrl}/tarball/${SourceTag}"
+
+        install_rails:
+          files:
+            /tmp/install_rails:
+              content: !Sub |
+                #!/bin/bash
+                curl -sSL https://get.rvm.io | bash
+                source /etc/profile.d/rvm.sh
+                rvm install 2.5.5
+                rvm --default use 2.5.5
+                gem install rails
+                gem update bundler
+              group: root
+              mode: "000500"
+              owner: root
+          commands:
+            01_install:
+              command: "/tmp/install_rails > /var/log/install_rails.log"
+
+    Properties:
+      ImageId: !FindInMap [AWSRegionArch2AMI, !Ref 'AWS::Region', !FindInMap [AWSInstanceType2Arch, !Ref InstanceType, Arch]]      
+      InstanceType: !Ref InstanceType
+      KeyName: !Ref KeyName
+      SecurityGroups:
+        - !Ref WebServerSecurityGroupId
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash -xe
+          yum install -y aws-cfn-bootstrap
+
+          # Install the files and packages from the metadata
+          /opt/aws/bin/cfn-init -v \
+            --stack ${AWS::StackName} \
+            --resource LaunchConfig \
+            --configsets config_all \
+            --region ${AWS::Region}
+
+          # Start up the cfn-hup daemon to listen for changes to the Web Server metadata
+          /opt/aws/bin/cfn-hup || error_exit 'Failed to start cfn-hup'
+
+          # Signal the status from cfn-init
+          /opt/aws/bin/cfn-signal -e $? \
+            --stack ${AWS::StackName} \
+            --resource WebServerGroup \
+            --region ${AWS::Region}
+
+  WebServerGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      LaunchConfigurationName: !Ref LaunchConfig
+      MinSize: 1
+      MaxSize: 3
+      DesiredCapacity: !Ref 'WebServerCapacity'
+      TargetGroupARNs:
+        - !Ref 'ALBTargetGroupArn'
+      VPCZoneIdentifier:
+        - !Ref WebServerSubnetOneId
+        - !Ref WebServerSubnetTwoId
+    CreationPolicy:
+      ResourceSignal:
+        Timeout: PT10M
+    UpdatePolicy:
+      AutoScalingRollingUpdate:
+        MinInstancesInService: 1
+        MaxBatchSize: 1
+        PauseTime: PT10M
+        WaitOnResourceSignals: true

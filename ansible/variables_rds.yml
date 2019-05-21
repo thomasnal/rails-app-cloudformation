@@ -1,0 +1,6 @@
+aws_region: eu-west-2
+db_name: simplerails_production
+db_username: simplerails
+db_password: simple-rails!
+db_security_group_id: sg-09d1aa9054bb4c438
+db_subnet_group_name: simple-rails-vpc-dbsubnetgroup-17nkdtkz83qbg

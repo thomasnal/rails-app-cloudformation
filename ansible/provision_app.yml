@@ -1,0 +1,39 @@
+---
+- name: Provision app
+  hosts: localhost
+  connection: local
+  gather_facts: no
+
+  vars_files:
+    - variables_app.yml
+
+  vars_prompt:
+    - default: simple-rails-app
+      name: stack_name
+      private: no
+      prompt: "Type stack name"
+
+
+  tasks:
+    - name: Provision the app stacks
+      cloudformation:
+        stack_name: "{{ stack_name }}"
+        state: present
+        region: "{{ aws_region }}"
+        disable_rollback: true
+        template: ../cloudformation/app.yml
+        template_parameters:
+          ALBTargetGroupArn: "{{ alb_target_group_arn }}"
+          DbAddress: "{{ db_address }}"
+          DbName: "{{ db_name }}"
+          DbPassword: "{{ db_password }}"
+          DbUsername: "{{ db_username }}"
+          InstanceType: "{{ instance_type }}"
+          KeyName: "{{ key_name }}"
+          RailsSecretKeyBase: "{{ rails_secret_key_base }}"
+          SourceTag: "{{ source_tag }}"
+          WebServerSecurityGroupId: "{{ web_server_security_group_id }}"
+          WebServerSubnetOneId: "{{ web_server_subnet_one_id }}"
+          WebServerSubnetTwoId: "{{ web_server_subnet_two_id }}"
+        tags:
+          Stack: "{{ stack_name }}"
