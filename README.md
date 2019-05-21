@@ -1,6 +1,6 @@
-# Infrastructure as a code for highly-available and scalable Ruby on Rails applications with a multi-az Amazon PostgreSQL RDS
+# CloudFormation deploying a highly-available and scalable Ruby on Rails app with highly-available PostgreSQL
 
-This an implementation of infrastructure, infrastructure as a code, for highly-available and scalable Ruby on Rails applications.
+This is an implementation of infrastructure, infrastructure as a code, for highly-available and scalable Ruby on Rails applications.
 
 The infrastructure is implemented in AWS CloudFormation YAML templates.  The CloudFormation templates are organized in nested stacks provisioning individual components, network, database and the application server.
 
