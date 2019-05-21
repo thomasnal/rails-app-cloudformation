@@ -9,6 +9,18 @@ The application is deployed into an Auto-scaling group behind a public Elastic L
 For ease of use, an Ansible playbook controls provisioning and cleanup of the infrastructure.
 
 
+# Pre-requisites
+
+Install ansible and awscli,
+```
+brew install ansible
+brew install awscli
+```
+Setup AWS credentials, access key and secret,
+```
+aws configure
+```
+
 # Usage
 
 1) Create `variables.yml` with desired values.  A sample one is provided for an smooth start.
