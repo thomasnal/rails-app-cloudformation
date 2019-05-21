@@ -56,8 +56,9 @@
         template_parameters:
           CfTemplatesUrl: "{{ cf_templates_s3_url }}"
           DbName: "{{ db_name }}"
-          DbUsername: "{{ db_username }}"
           DbPassword: "{{ db_password }}"
+          DbUsername: "{{ db_username }}"
+          InstanceType: "{{ instance_type }}"
           KeyName: "{{ key_name }}"
           RailsSecretKeyBase: "{{ rails_secret_key_base }}"
           SourceTag: "{{ git_tag }}"
