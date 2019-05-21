@@ -16,8 +16,9 @@ Parameters:
   InstanceType:
     AllowedValues:
     - t3.micro
+    - t3.small
     ConstraintDescription: must be a valid EC2 instance type
-    Default: t3.micro
+    Default: t3.small
     Description: "WebServer EC2 instance type"
     Type: String
 
